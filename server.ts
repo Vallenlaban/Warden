@@ -6,7 +6,7 @@ import { GoogleGenAI } from "@google/genai";
 
 const app = express();
 const PORT = process.env.PORT ? Number(process.env.PORT) : 3000;
-const ROOT_DIR = path.join(__dirname);
+const ROOT_DIR = process.cwd();
 
 app.use(express.json());
 app.use(express.static(ROOT_DIR));
