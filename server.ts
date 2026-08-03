@@ -1,13 +1,18 @@
 ﻿import "dotenv/config";
 import express from "express";
 import fetch from "node-fetch";
+import path from "path";
 import { GoogleGenAI } from "@google/genai";
 
 const app = express();
 const PORT = process.env.PORT ? Number(process.env.PORT) : 3000;
+const ROOT_DIR = path.join(__dirname);
 
 app.use(express.json());
-app.use(express.static(__dirname));
+app.use(express.static(ROOT_DIR));
+app.get("/", (_req, res) => {
+  res.sendFile(path.join(ROOT_DIR, "index.html"));
+});
 
 const RESPONSE_SCHEMA = {
   type: "object",
