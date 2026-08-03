@@ -13,6 +13,7 @@ This project solves the problem of web3 phishing by combining AI URL analysis wi
 ## Features
 
 - AI URL analysis using Google Gemini
+- Automatic fallback to Groq Cloud if Gemini is unavailable
 - AI Threat Score (0–100)
 - SAFE / DANGER classification
 - MetaMask wallet integration
@@ -22,14 +23,15 @@ This project solves the problem of web3 phishing by combining AI URL analysis wi
 ## How It Works
 
 1. User enters a URL.
-2. Google Gemini & Groq Cloud analyzes the URL.
-3. Warden displays:
+2. Warden analyzes the URL using Google Gemini AI.
+3. If Gemini is temporarily unavailable or reaches its rate limit, Warden automatically falls back to Groq Cloud to continue the analysis.
+4. Warden displays:
    - Threat Score
    - SAFE / DANGER status
    - AI explanation
-4. The user can choose to report the phishing website.
-5. MetaMask requests transaction confirmation.
-6. The smart contract permanently records the phishing report on BOT Chain Mainnet.
+5. The user can choose to report the phishing website.
+6. MetaMask requests transaction confirmation.
+7. The smart contract permanently records the phishing report on BOT Chain Mainnet.
 
 ## Technology Stack
 

@@ -475,26 +475,44 @@ function initializeEventListeners() {
 }
 
 function lockBodyScroll() {
-  const scrollY = window.scrollY || document.documentElement.scrollTop;
+  const scrollY =
+    window.scrollY ||
+    window.pageYOffset ||
+    document.documentElement.scrollTop ||
+    0;
+  document.body.dataset.scrollY = String(scrollY);
   document.body.style.position = "fixed";
   document.body.style.top = `-${scrollY}px`;
   document.body.style.left = "0";
   document.body.style.right = "0";
   document.body.style.width = "100%";
   document.body.style.overflow = "hidden";
-  document.body.dataset.scrollY = String(scrollY);
+  document.documentElement.style.overflow = "hidden";
+  document.documentElement.style.scrollBehavior = "auto";
 }
 
 function unlockBodyScroll() {
-  const scrollY = Number(document.body.dataset.scrollY || "0");
+  const scrollY = Number(document.body.dataset.scrollY);
   document.body.style.position = "";
   document.body.style.top = "";
   document.body.style.left = "";
   document.body.style.right = "";
   document.body.style.width = "";
   document.body.style.overflow = "";
+  document.documentElement.style.overflow = "";
+  document.documentElement.style.scrollBehavior = "auto";
   document.body.removeAttribute("data-scroll-y");
-  window.scrollTo(0, scrollY);
+  if (!Number.isNaN(scrollY) && scrollY !== 0) {
+    window.scrollTo(0, scrollY);
+    document.documentElement.scrollTop = scrollY;
+    document.body.scrollTop = scrollY;
+  }
+}
+
+function closeAllModals() {
+  document.querySelectorAll(".modal-overlay.active").forEach((modal) => {
+    modal.classList.remove("active");
+  });
 }
 
 function openBotChainModal(e) {
@@ -502,6 +520,7 @@ function openBotChainModal(e) {
     e.preventDefault();
     e.stopPropagation();
   }
+  closeAllModals();
   lockBodyScroll();
   const modal = document.getElementById("botChainModal");
   if (modal) {
@@ -513,18 +532,13 @@ function openBotChainModal(e) {
 }
 
 function closeBotChainModal(e) {
-  if (e && e.target) {
-    if (
-      e.target.classList.contains("modal-overlay") ||
-      e.target.closest(".modal-close-btn")
-    ) {
-      const modal = document.getElementById("botChainModal");
-      if (modal) modal.classList.remove("active");
-    }
-  } else {
-    const modal = document.getElementById("botChainModal");
-    if (modal) modal.classList.remove("active");
+  if (e && typeof e.preventDefault === "function") {
+    e.preventDefault();
+    e.stopPropagation();
   }
+  const modal = document.getElementById("botChainModal");
+  if (modal) modal.classList.remove("active");
+  unlockBodyScroll();
 }
 
 function openSmartContractModal(e) {
@@ -532,6 +546,7 @@ function openSmartContractModal(e) {
     e.preventDefault();
     e.stopPropagation();
   }
+  closeAllModals();
   lockBodyScroll();
   const modal = document.getElementById("smartContractModal");
   if (modal) {
@@ -543,20 +558,13 @@ function openSmartContractModal(e) {
 }
 
 function closeSmartContractModal(e) {
-  if (e && e.target) {
-    if (
-      e.target.classList.contains("modal-overlay") ||
-      e.target.closest(".modal-close-btn")
-    ) {
-      const modal = document.getElementById("smartContractModal");
-      if (modal) modal.classList.remove("active");
-      unlockBodyScroll();
-    }
-  } else {
-    const modal = document.getElementById("smartContractModal");
-    if (modal) modal.classList.remove("active");
-    unlockBodyScroll();
+  if (e && typeof e.preventDefault === "function") {
+    e.preventDefault();
+    e.stopPropagation();
   }
+  const modal = document.getElementById("smartContractModal");
+  if (modal) modal.classList.remove("active");
+  unlockBodyScroll();
 }
 
 function openAiSecurityModal(e) {
@@ -564,6 +572,7 @@ function openAiSecurityModal(e) {
     e.preventDefault();
     e.stopPropagation();
   }
+  closeAllModals();
   lockBodyScroll();
   const modal = document.getElementById("aiSecurityModal");
   if (modal) {
@@ -575,20 +584,13 @@ function openAiSecurityModal(e) {
 }
 
 function closeAiSecurityModal(e) {
-  if (e && e.target) {
-    if (
-      e.target.classList.contains("modal-overlay") ||
-      e.target.closest(".modal-close-btn")
-    ) {
-      const modal = document.getElementById("aiSecurityModal");
-      if (modal) modal.classList.remove("active");
-      unlockBodyScroll();
-    }
-  } else {
-    const modal = document.getElementById("aiSecurityModal");
-    if (modal) modal.classList.remove("active");
-    unlockBodyScroll();
+  if (e && typeof e.preventDefault === "function") {
+    e.preventDefault();
+    e.stopPropagation();
   }
+  const modal = document.getElementById("aiSecurityModal");
+  if (modal) modal.classList.remove("active");
+  unlockBodyScroll();
 }
 
 window.openBotChainModal = openBotChainModal;
