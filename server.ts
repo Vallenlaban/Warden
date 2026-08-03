@@ -180,12 +180,10 @@ app.post(["/api/evaluate", "/api/analyze-url"], async (req, res) => {
     const groqApiKey = process.env.GROQ_API_KEY;
     if (!geminiApiKey && !groqApiKey) {
       console.warn("GEMINI_API_KEY dan GROQ_API_KEY tidak ditemukan di .env!");
-      return res
-        .status(500)
-        .json({
-          error:
-            "GEMINI_API_KEY atau GROQ_API_KEY harus dikonfigurasi pada server",
-        });
+      return res.status(500).json({
+        error:
+          "GEMINI_API_KEY atau GROQ_API_KEY harus dikonfigurasi pada server",
+      });
     }
 
     const systemInstruction = buildSystemInstruction();
@@ -233,6 +231,12 @@ app.post(["/api/evaluate", "/api/analyze-url"], async (req, res) => {
   }
 });
 
-app.listen(PORT, () => {
-  console.log(`Server Warden berjalan di http://localhost:${PORT}`);
-});
+const isVercel = process.env.VERCEL === "1";
+
+if (!isVercel) {
+  app.listen(PORT, () => {
+    console.log(`Server Warden berjalan di http://localhost:${PORT}`);
+  });
+}
+
+export default app;
