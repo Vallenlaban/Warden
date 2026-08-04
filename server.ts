@@ -207,67 +207,77 @@ const callGroq = async (
   throw lastError || new Error("Groq API did not return a valid response");
 };
 
-app.post(["/api/evaluate", "/api/analyze-url"], async (req: Request, res: Response) => {
-  try {
-    const { url } = req.body;
-    if (!url) {
-      return res.status(400).json({ error: "Parameter URL wajib diisi" });
-    }
-
-    const geminiApiKey = process.env.GEMINI_API_KEY;
-    const groqApiKey = process.env.GROQ_API_KEY;
-    if (!geminiApiKey && !groqApiKey) {
-      console.warn("GEMINI_API_KEY dan GROQ_API_KEY tidak ditemukan di .env!");
-      return res.status(500).json({
-        error:
-          "GEMINI_API_KEY atau GROQ_API_KEY harus dikonfigurasi pada server",
-      });
-    }
-
-    const systemInstruction = buildSystemInstruction();
-    let geminiError: any = null;
-
-    if (geminiApiKey) {
-      try {
-        return res.json(await callGemini(url, systemInstruction, geminiApiKey));
-      } catch (error) {
-        geminiError = error;
-        console.warn("Gemini failed, trying Groq if available:", String(error));
+app.post(
+  ["/api/evaluate", "/api/analyze-url"],
+  async (req: Request, res: Response) => {
+    try {
+      const { url } = req.body;
+      if (!url) {
+        return res.status(400).json({ error: "Parameter URL wajib diisi" });
       }
-    }
 
-    if (groqApiKey) {
-      try {
-        return res.json(await callGroq(url, systemInstruction, groqApiKey));
-      } catch (error: any) {
-        console.error("Groq API failed:", error?.message || String(error));
+      const geminiApiKey = process.env.GEMINI_API_KEY;
+      const groqApiKey = process.env.GROQ_API_KEY;
+      if (!geminiApiKey && !groqApiKey) {
+        console.warn(
+          "GEMINI_API_KEY dan GROQ_API_KEY tidak ditemukan di .env!",
+        );
+        return res.status(500).json({
+          error:
+            "GEMINI_API_KEY atau GROQ_API_KEY harus dikonfigurasi pada server",
+        });
+      }
+
+      const systemInstruction = buildSystemInstruction();
+      let geminiError: any = null;
+
+      if (geminiApiKey) {
+        try {
+          return res.json(
+            await callGemini(url, systemInstruction, geminiApiKey),
+          );
+        } catch (error) {
+          geminiError = error;
+          console.warn(
+            "Gemini failed, trying Groq if available:",
+            String(error),
+          );
+        }
+      }
+
+      if (groqApiKey) {
+        try {
+          return res.json(await callGroq(url, systemInstruction, groqApiKey));
+        } catch (error: any) {
+          console.error("Groq API failed:", error?.message || String(error));
+          return res.status(502).json({
+            error: "Both Gemini and Groq providers failed",
+            providers: {
+              gemini: geminiError ? String(geminiError) : "not attempted",
+              groq: String(error),
+            },
+            fallback: true,
+          });
+        }
+      }
+
+      if (geminiError) {
         return res.status(502).json({
-          error: "Both Gemini and Groq providers failed",
-          providers: {
-            gemini: geminiError ? String(geminiError) : "not attempted",
-            groq: String(error),
-          },
+          error: "Gemini API failed and no GROQ_API_KEY is configured",
+          details: String(geminiError),
           fallback: true,
         });
       }
-    }
 
-    if (geminiError) {
-      return res.status(502).json({
-        error: "Gemini API failed and no GROQ_API_KEY is configured",
-        details: String(geminiError),
-        fallback: true,
-      });
+      return res.status(500).json({ error: "No AI provider configured" });
+    } catch (err: any) {
+      console.error("Internal request handler error:", err);
+      return res
+        .status(500)
+        .json({ error: "Internal server error", details: String(err) });
     }
-
-    return res.status(500).json({ error: "No AI provider configured" });
-  } catch (err: any) {
-    console.error("Internal request handler error:", err);
-    return res
-      .status(500)
-      .json({ error: "Internal server error", details: String(err) });
-  }
-});
+  },
+);
 
 if (!isVercel) {
   app.listen(PORT, () => {
