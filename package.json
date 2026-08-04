@@ -2,7 +2,6 @@
   "name": "warden-ai-security",
   "version": "1.0.0",
   "private": true,
-  "type": "module",
   "description": "Warden local AI security UI",
   "scripts": {
     "build": "tsc -p tsconfig.json",

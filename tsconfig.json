@@ -1,19 +1,17 @@
 {
   "compilerOptions": {
     "target": "ES2020",
-    "module": "NodeNext",
+    "module": "CommonJS",
     "lib": ["ES2020", "DOM"],
-    "moduleResolution": "NodeNext",
-    "types": ["node"],
+    "moduleResolution": "Node",
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,
     "forceConsistentCasingInFileNames": true,
     "strict": true,
     "skipLibCheck": true,
     "outDir": "dist",
-    "rootDir": ".",
     "resolveJsonModule": true
   },
-  "include": ["server.ts", "api/**/*.ts", "types/**/*.d.ts"],
+  "include": ["server.ts", "types/**/*.d.ts"],
   "exclude": ["node_modules", "dist"]
 }

@@ -1,6 +1,5 @@
 ﻿import "dotenv/config";
 import express = require("express");
-import { NextFunction, Request, Response } from "express";
 import * as path from "path";
 import * as fs from "fs";
 import { GoogleGenAI } from "@google/genai";
@@ -9,40 +8,28 @@ const fetch = globalThis.fetch ?? require("node-fetch");
 const app = express();
 const PORT = process.env.PORT ? Number(process.env.PORT) : 3000;
 const ROOT_DIR = process.cwd();
-const isVercel = process.env.VERCEL === "1" || Boolean(process.env.VERCEL);
 
-app.disable("x-powered-by");
-app.use(express.json({ limit: "1mb" }));
+app.use(express.json());
 
-// Only serve static files and add SPA fallback when running locally (not on Vercel).
-// On Vercel, static files and rewrites are handled by the platform; letting
-// Express try to serve index.html from the function filesystem can cause
-// "Cannot GET /" because the static files are not present inside the function.
-if (!isVercel) {
-  // Determine a safe static directory that works locally and after build.
-  // Try a directory relative to this file (works when compiled to dist/),
-  // then fallback to process.cwd() where index.html exists in repo root.
-  const STATIC_DIR = (() => {
-    try {
-      const maybe = path.resolve(__dirname, "..");
-      if (fs.existsSync(path.join(maybe, "index.html"))) return maybe;
-    } catch (e) {
-      // ignore
-    }
-    return process.cwd();
-  })();
+const STATIC_DIR = (() => {
+  try {
+    const maybe = path.resolve(__dirname, "..");
+    if (fs.existsSync(path.join(maybe, "index.html"))) return maybe;
+  } catch (e) {
+    // ignore
+  }
+  return ROOT_DIR;
+})();
 
-  app.use(express.static(STATIC_DIR, { extensions: ["html"] }));
+app.use(express.static(STATIC_DIR, { extensions: ["html"] }));
 
-  // SPA fallback: serve index.html for any non-API GET request.
-  app.get("*", (req: Request, res: Response, next: NextFunction) => {
-    if (req.method !== "GET") return next();
-    if (req.path && req.path.startsWith("/api/")) return next();
-    res.sendFile(path.join(STATIC_DIR, "index.html"), (err: any) => {
-      if (err) return next(err);
-    });
+app.get("*", (req, res, next) => {
+  if (req.method !== "GET") return next();
+  if (req.path && req.path.startsWith("/api/")) return next();
+  res.sendFile(path.join(STATIC_DIR, "index.html"), (err) => {
+    if (err) return next(err);
   });
-}
+});
 
 const RESPONSE_SCHEMA = {
   type: "object",
@@ -204,82 +191,70 @@ const callGroq = async (
   throw lastError || new Error("Groq API did not return a valid response");
 };
 
-app.post(
-  ["/api/evaluate", "/api/analyze-url"],
-  async (req: Request, res: Response) => {
-    try {
-      const { url } = req.body;
-      if (!url) {
-        return res.status(400).json({ error: "Parameter URL wajib diisi" });
+app.post(["/api/evaluate", "/api/analyze-url"], async (req: any, res: any) => {
+  try {
+    const { url } = (req.body ?? {}) as { url?: string };
+    if (!url) {
+      return res.status(400).json({ error: "Parameter URL wajib diisi" });
+    }
+
+    const geminiApiKey = process.env.GEMINI_API_KEY;
+    const groqApiKey = process.env.GROQ_API_KEY;
+    if (!geminiApiKey && !groqApiKey) {
+      console.warn("GEMINI_API_KEY dan GROQ_API_KEY tidak ditemukan di .env!");
+      return res.status(500).json({
+        error:
+          "GEMINI_API_KEY atau GROQ_API_KEY harus dikonfigurasi pada server",
+      });
+    }
+
+    const systemInstruction = buildSystemInstruction();
+    let geminiError: any = null;
+
+    if (geminiApiKey) {
+      try {
+        return res.json(await callGemini(url, systemInstruction, geminiApiKey));
+      } catch (error) {
+        geminiError = error;
+        console.warn("Gemini failed, trying Groq if available:", String(error));
       }
+    }
 
-      const geminiApiKey = process.env.GEMINI_API_KEY;
-      const groqApiKey = process.env.GROQ_API_KEY;
-      if (!geminiApiKey && !groqApiKey) {
-        console.warn(
-          "GEMINI_API_KEY dan GROQ_API_KEY tidak ditemukan di .env!",
-        );
-        return res.status(500).json({
-          error:
-            "GEMINI_API_KEY atau GROQ_API_KEY harus dikonfigurasi pada server",
-        });
-      }
-
-      const systemInstruction = buildSystemInstruction();
-      let geminiError: any = null;
-
-      if (geminiApiKey) {
-        try {
-          return res.json(
-            await callGemini(url, systemInstruction, geminiApiKey),
-          );
-        } catch (error) {
-          geminiError = error;
-          console.warn(
-            "Gemini failed, trying Groq if available:",
-            String(error),
-          );
-        }
-      }
-
-      if (groqApiKey) {
-        try {
-          return res.json(await callGroq(url, systemInstruction, groqApiKey));
-        } catch (error: any) {
-          console.error("Groq API failed:", error?.message || String(error));
-          return res.status(502).json({
-            error: "Both Gemini and Groq providers failed",
-            providers: {
-              gemini: geminiError ? String(geminiError) : "not attempted",
-              groq: String(error),
-            },
-            fallback: true,
-          });
-        }
-      }
-
-      if (geminiError) {
+    if (groqApiKey) {
+      try {
+        return res.json(await callGroq(url, systemInstruction, groqApiKey));
+      } catch (error: any) {
+        console.error("Groq API failed:", error?.message || String(error));
         return res.status(502).json({
-          error: "Gemini API failed and no GROQ_API_KEY is configured",
-          details: String(geminiError),
+          error: "Both Gemini and Groq providers failed",
+          providers: {
+            gemini: geminiError ? String(geminiError) : "not attempted",
+            groq: String(error),
+          },
           fallback: true,
         });
       }
-
-      return res.status(500).json({ error: "No AI provider configured" });
-    } catch (err: any) {
-      console.error("Internal request handler error:", err);
-      return res
-        .status(500)
-        .json({ error: "Internal server error", details: String(err) });
     }
-  },
-);
 
-if (!isVercel) {
-  app.listen(PORT, () => {
-    console.log(`Server Warden berjalan di http://localhost:${PORT}`);
-  });
-}
+    if (geminiError) {
+      return res.status(502).json({
+        error: "Gemini API failed and no GROQ_API_KEY is configured",
+        details: String(geminiError),
+        fallback: true,
+      });
+    }
+
+    return res.status(500).json({ error: "No AI provider configured" });
+  } catch (err: any) {
+    console.error("Internal request handler error:", err);
+    return res
+      .status(500)
+      .json({ error: "Internal server error", details: String(err) });
+  }
+});
+
+app.listen(PORT, () => {
+  console.log(`Server Warden berjalan di http://localhost:${PORT}`);
+});
 
 export default app;
