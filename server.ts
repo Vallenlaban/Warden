@@ -264,8 +264,6 @@ app.post(["/api/evaluate", "/api/analyze-url"], async (req, res) => {
   }
 });
 
-const isVercel = process.env.VERCEL === "1";
-
 if (!isVercel) {
   app.listen(PORT, () => {
     console.log(`Server Warden berjalan di http://localhost:${PORT}`);
