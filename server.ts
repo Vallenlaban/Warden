@@ -1,11 +1,14 @@
 ﻿import "dotenv/config";
-import express = require("express");
-import { NextFunction, Request, Response } from "express";
-import * as path from "path";
-import * as fs from "fs";
+import express, { NextFunction, Request, Response } from "express";
+import path from "node:path";
+import fs from "node:fs";
+import { fileURLToPath } from "node:url";
 import { GoogleGenAI } from "@google/genai";
+import nodeFetch from "node-fetch";
 
-const fetch = globalThis.fetch ?? require("node-fetch");
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const fetch = globalThis.fetch ?? nodeFetch;
 const app = express();
 const PORT = process.env.PORT ? Number(process.env.PORT) : 3000;
 const ROOT_DIR = process.cwd();
