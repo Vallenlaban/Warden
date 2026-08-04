@@ -2,6 +2,7 @@
 import express from "express";
 import fetch from "node-fetch";
 import path from "path";
+import fs from "fs";
 import { GoogleGenAI } from "@google/genai";
 
 const app = express();
@@ -9,9 +10,29 @@ const PORT = process.env.PORT ? Number(process.env.PORT) : 3000;
 const ROOT_DIR = process.cwd();
 
 app.use(express.json());
-app.use(express.static(ROOT_DIR));
-app.get("/", (_req, res) => {
-  res.sendFile(path.join(ROOT_DIR, "index.html"));
+
+// Determine a safe static directory that works both locally and after build.
+// Try a directory relative to this file (works when compiled to dist/),
+// then fallback to process.cwd() where index.html exists in repo root.
+const STATIC_DIR = (() => {
+  try {
+    const maybe = path.resolve(__dirname, "..");
+    if (fs.existsSync(path.join(maybe, "index.html"))) return maybe;
+  } catch (e) {
+    // ignore
+  }
+  return process.cwd();
+})();
+
+app.use(express.static(STATIC_DIR, { extensions: ["html"] }));
+
+// SPA fallback: serve index.html for any non-API GET request.
+app.get("*", (req, res, next) => {
+  if (req.method !== "GET") return next();
+  if (req.path && req.path.startsWith("/api/")) return next();
+  res.sendFile(path.join(STATIC_DIR, "index.html"), (err) => {
+    if (err) return next(err);
+  });
 });
 
 const RESPONSE_SCHEMA = {
