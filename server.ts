@@ -8,32 +8,39 @@ import { GoogleGenAI } from "@google/genai";
 const app = express();
 const PORT = process.env.PORT ? Number(process.env.PORT) : 3000;
 const ROOT_DIR = process.cwd();
+const isVercel = process.env.VERCEL === "1";
 
 app.use(express.json());
 
-// Determine a safe static directory that works both locally and after build.
-// Try a directory relative to this file (works when compiled to dist/),
-// then fallback to process.cwd() where index.html exists in repo root.
-const STATIC_DIR = (() => {
-  try {
-    const maybe = path.resolve(__dirname, "..");
-    if (fs.existsSync(path.join(maybe, "index.html"))) return maybe;
-  } catch (e) {
-    // ignore
-  }
-  return process.cwd();
-})();
+// Only serve static files and add SPA fallback when running locally (not on Vercel).
+// On Vercel, static files and rewrites are handled by the platform; letting
+// Express try to serve index.html from the function filesystem can cause
+// "Cannot GET /" because the static files are not present inside the function.
+if (!isVercel) {
+  // Determine a safe static directory that works locally and after build.
+  // Try a directory relative to this file (works when compiled to dist/),
+  // then fallback to process.cwd() where index.html exists in repo root.
+  const STATIC_DIR = (() => {
+    try {
+      const maybe = path.resolve(__dirname, "..");
+      if (fs.existsSync(path.join(maybe, "index.html"))) return maybe;
+    } catch (e) {
+      // ignore
+    }
+    return process.cwd();
+  })();
 
-app.use(express.static(STATIC_DIR, { extensions: ["html"] }));
+  app.use(express.static(STATIC_DIR, { extensions: ["html"] }));
 
-// SPA fallback: serve index.html for any non-API GET request.
-app.get("*", (req, res, next) => {
-  if (req.method !== "GET") return next();
-  if (req.path && req.path.startsWith("/api/")) return next();
-  res.sendFile(path.join(STATIC_DIR, "index.html"), (err) => {
-    if (err) return next(err);
+  // SPA fallback: serve index.html for any non-API GET request.
+  app.get("*", (req, res, next) => {
+    if (req.method !== "GET") return next();
+    if (req.path && req.path.startsWith("/api/")) return next();
+    res.sendFile(path.join(STATIC_DIR, "index.html"), (err) => {
+      if (err) return next(err);
+    });
   });
-});
+}
 
 const RESPONSE_SCHEMA = {
   type: "object",
