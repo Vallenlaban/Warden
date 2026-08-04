@@ -1,16 +1,17 @@
 ﻿import "dotenv/config";
-import express from "express";
-import fetch from "node-fetch";
-import path from "path";
-import fs from "fs";
+import express = require("express");
+import * as path from "path";
+import * as fs from "fs";
 import { GoogleGenAI } from "@google/genai";
 
+const fetch = globalThis.fetch ?? require("node-fetch");
 const app = express();
 const PORT = process.env.PORT ? Number(process.env.PORT) : 3000;
 const ROOT_DIR = process.cwd();
-const isVercel = process.env.VERCEL === "1";
+const isVercel = process.env.VERCEL === "1" || Boolean(process.env.VERCEL);
 
-app.use(express.json());
+app.disable("x-powered-by");
+app.use(express.json({ limit: "1mb" }));
 
 // Only serve static files and add SPA fallback when running locally (not on Vercel).
 // On Vercel, static files and rewrites are handled by the platform; letting
