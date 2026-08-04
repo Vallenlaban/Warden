@@ -1,5 +1,6 @@
 ﻿import "dotenv/config";
 import express = require("express");
+import { NextFunction, Request, Response } from "express";
 import * as path from "path";
 import * as fs from "fs";
 import { GoogleGenAI } from "@google/genai";
@@ -34,10 +35,10 @@ if (!isVercel) {
   app.use(express.static(STATIC_DIR, { extensions: ["html"] }));
 
   // SPA fallback: serve index.html for any non-API GET request.
-  app.get("*", (req, res, next) => {
+  app.get("*", (req: Request, res: Response, next: NextFunction) => {
     if (req.method !== "GET") return next();
     if (req.path && req.path.startsWith("/api/")) return next();
-    res.sendFile(path.join(STATIC_DIR, "index.html"), (err) => {
+    res.sendFile(path.join(STATIC_DIR, "index.html"), (err: any) => {
       if (err) return next(err);
     });
   });
@@ -203,7 +204,7 @@ const callGroq = async (
   throw lastError || new Error("Groq API did not return a valid response");
 };
 
-app.post(["/api/evaluate", "/api/analyze-url"], async (req, res) => {
+app.post(["/api/evaluate", "/api/analyze-url"], async (req: Request, res: Response) => {
   try {
     const { url } = req.body;
     if (!url) {
